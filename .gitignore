@@ -9,3 +9,7 @@ AdvertiseGen/
 *.gz
 *.idea
 .DS_Store
+
+venv
+test_output
+

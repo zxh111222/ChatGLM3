@@ -38,7 +38,6 @@ ModelType = Union[PreTrainedModel, PeftModelForCausalLM]
 TokenizerType = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
-
 class DataCollatorForSeq2Seq(_DataCollatorForSeq2Seq):
     def __call__(self, features, return_tensors=None):
         output_ids = (
@@ -386,6 +385,7 @@ def load_tokenizer_and_model(
         peft_config: Optional[PeftConfig] = None,
 ) -> tuple[PreTrainedTokenizer, nn.Module]:
     tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if peft_config is not None:
         if peft_config.peft_type.name == "PREFIX_TUNING":
             config = AutoConfig.from_pretrained(model_dir, trust_remote_code=True)
@@ -412,6 +412,7 @@ def load_tokenizer_and_model(
             empty_init=False,
             use_cache=False
         )
+    model = model.to(device)
     print_model_size(model)
     return tokenizer, model
 
@@ -457,6 +458,7 @@ def main(
 ):
     ft_config = FinetuningConfig.from_file(config_file)
     tokenizer, model = load_tokenizer_and_model(model_dir, peft_config=ft_config.peft_config)
+    model = model.to("cuda")
     data_manager = DataManager(data_dir, ft_config.data_config)
 
     train_dataset = data_manager.get_dataset(
@@ -518,6 +520,8 @@ def main(
     if ft_config.peft_config is not None:
         use_tokenizer = False if ft_config.peft_config.peft_type == "LORA" else True
 
+    ft_config.training_args.deepspeed = "./configs/ds_zero_2.json"
+
     trainer = Seq2SeqTrainer(
         model=model,
         args=ft_config.training_args,
@@ -527,7 +531,7 @@ def main(
             return_tensors='pt',
         ),
         train_dataset=train_dataset,
-        eval_dataset=val_dataset.select(list(range(50))),
+        eval_dataset=val_dataset.select(list(range(min(len(val_dataset), 50)))),
         tokenizer=tokenizer if use_tokenizer else None,  # LORA does not need tokenizer
         compute_metrics=functools.partial(compute_metrics, tokenizer=tokenizer),
     )

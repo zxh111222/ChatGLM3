@@ -36,6 +36,10 @@ def get_model():
 # 加载Chatglm3的model和tokenizer
 tokenizer, model = get_model()
 
+model = model.quantize(bits=4, device="cuda").cuda()
+model.eval()
+
+
 if "history" not in st.session_state:
     st.session_state.history = []
 if "past_key_values" not in st.session_state:

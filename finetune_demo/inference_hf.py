@@ -3,7 +3,7 @@
 
 from pathlib import Path
 from typing import Annotated, Union
-
+import torch
 import typer
 from peft import AutoPeftModelForCausalLM, PeftModelForCausalLM
 from transformers import (
@@ -26,6 +26,7 @@ def _resolve_path(path: Union[str, Path]) -> Path:
 
 def load_model_and_tokenizer(model_dir: Union[str, Path]) -> tuple[ModelType, TokenizerType]:
     model_dir = _resolve_path(model_dir)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if (model_dir / 'adapter_config.json').exists():
         model = AutoPeftModelForCausalLM.from_pretrained(
             model_dir, trust_remote_code=True, device_map='auto'
@@ -39,6 +40,7 @@ def load_model_and_tokenizer(model_dir: Union[str, Path]) -> tuple[ModelType, To
     tokenizer = AutoTokenizer.from_pretrained(
         tokenizer_dir, trust_remote_code=True
     )
+    model = model.to(device)
     return model, tokenizer
 
 

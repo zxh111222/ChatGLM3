@@ -1,0 +1,12 @@
+python finetune_demo/finetune_hf.py finetune_demo/data/psychological_consulting ./chatglm3-6b finetune_demo/configs/lora.yaml
+
+python finetune_demo/inference_hf.py output/checkpoint-100/ --prompt "我失恋了，他对我很好，但是还是分开，我感觉很孤独、很伤心。"
+
+
+
+
+
+
+
+
+
